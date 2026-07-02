@@ -1,11 +1,14 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "./assets/vite.svg";
+import heroImg from "./assets/hero.png";
+import "./App.css";
+import Form from "./components/form/form";
+import Search from "./components/search/search";
+import PokemonName from "./components/pokemon/pokemonName";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
 
   return (
     <>
@@ -114,9 +117,15 @@ function App() {
       </section>
 
       <div className="ticks"></div>
-      <section id="spacer"></section>
+      <section className="flex flex-col py-6 px-5" id="spacer">
+        <div className="flex flex-row gap-6">
+          <Form />
+          <Search />
+          <PokemonName />
+        </div>
+      </section>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

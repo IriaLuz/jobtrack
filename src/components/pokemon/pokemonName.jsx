@@ -27,7 +27,6 @@ const PokemonName = () => {
   }, []);
   if (loading) return <p>Loading...</p>;
   if (error) return <p>There is a problem finding pokemons</p>;
-  console.log(data);
   return (
     <div>
       <h3>Fetching pokemon name</h3>
@@ -39,5 +38,4 @@ const PokemonName = () => {
     </div>
   );
 };
-
 export default PokemonName;

@@ -11,7 +11,7 @@ const SearchInput = ({ onSearch }) => {
 
   return (
     <div className="flex flex-col items-start justify-start ">
-      <h3>Search + debounced query</h3>
+      <h3>Debounced Search Input</h3>
       <input
         type="text"
         value={query}

@@ -25,6 +25,7 @@ const PokemonName = () => {
       fetchData();
     }, 5000);
   }, []);
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p>There is a problem finding pokemons</p>;
   return (

@@ -6,6 +6,7 @@ import "./App.css";
 import Form from "./components/form/form";
 import Search from "./components/search/search";
 import PokemonName from "./components/pokemon/pokemonName";
+import SearchInput from "./components/searchInput/searchInput";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -122,6 +123,7 @@ function App() {
           <Form />
           <Search />
           <PokemonName />
+          <SearchInput onSearch={(q) => console.log("onSearch:", q)} />
         </div>
       </section>
     </>

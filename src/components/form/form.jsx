@@ -1,4 +1,5 @@
 import { useState } from "react";
+import useLocalStorage from "../../hooks/useLocalStorage";
 
 const initialValues = {
   name: "",
@@ -9,11 +10,15 @@ const initialValues = {
 };
 
 const Form = () => {
-  const [userData, setUserData] = useState(initialValues);
+  const [userData, setUserData] = useLocalStorage(
+    "user details",
+    initialValues
+  );
+  const [password, setPassword] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(JSON.stringify(userData));
+    alert(JSON.stringify({ ...userData, password }));
     setUserData(initialValues);
   };
 
@@ -70,11 +75,9 @@ const Form = () => {
           required
           type="password"
           name="password"
-          value={userData.password}
+          value={password}
           placeholder="add password here"
-          onChange={(e) =>
-            setUserData({ ...userData, password: e.target.value })
-          }
+          onChange={(e) => setPassword(e.target.value)}
           className="border-[#2e303a] border rounded py-1.5 px-3 w-full"
         />
         <label className="" htmlFor="email">

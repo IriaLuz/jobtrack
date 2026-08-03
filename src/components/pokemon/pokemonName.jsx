@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 const PokemonName = () => {
-  const [data, setData] = useState();
-  const [error, setError] = useState(false);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setTimeout(() => {

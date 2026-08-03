@@ -129,7 +129,7 @@ function App() {
       </section>
       <section className="flex flex-col py-6 px-5" id="spacer">
         <div className="flex flex-row gap-6">
-          <CardFetch />
+          <CardFetch userId={1} />
         </div>
       </section>
     </>

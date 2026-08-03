@@ -5,12 +5,11 @@ const CardFetch = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const url = `/api/users/${userId}`;
-
   useEffect(() => {
     const controller = new AbortController();
 
     const fetchData = async () => {
+      const url = `https://jsonplaceholder.typicode.com/users/${userId}`;
       try {
         const res = await fetch(url, { signal: controller.signal });
 
@@ -39,7 +38,7 @@ const CardFetch = ({ userId }) => {
 
   if (loading) return <h3>loading</h3>;
 
-  return <div>user: {data}</div>;
+  return <div>user: {JSON.stringify(data)}</div>;
 };
 
 export default CardFetch;

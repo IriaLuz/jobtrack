@@ -1,7 +1,11 @@
 import { useState } from "react";
 import useDebounce from "../../hooks/useDebounce";
 
-const data = [
+interface MessageProps {
+  message: string
+}
+
+const data: MessageProps[] = [
   { message: "hola" },
   { message: "que tal" },
   { message: "example" },
@@ -12,7 +16,7 @@ const Search = () => {
   const [query, setQuery] = useState("");
   const debouncedTextValue = useDebounce(query, 300);
 
-  const handleOnchange = (e) => {
+  const handleOnchange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     setQuery(input);
   };

@@ -1,9 +1,19 @@
 import { useState } from "react";
 import useLocalStorage from "../../hooks/useLocalStorage";
 
-const initialValues = {
+interface FormProps {
+  name: string;
+  password: string;
+  email: string;
+  age: string;
+  favoriteDay: string;
+
+}
+
+type StoredData = Omit<FormProps, "password">
+
+const initialValues: StoredData = {
   name: "",
-  password: "",
   email: "",
   age: "",
   favoriteDay: "",
@@ -16,7 +26,7 @@ const Form = () => {
   );
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     alert(JSON.stringify({ ...userData, password }));
     setUserData(initialValues);
@@ -97,7 +107,7 @@ const Form = () => {
         <input
           type="text"
           id="day"
-          name="fruit"
+          name="favoriteDay"
           list="week"
           required
           pattern="[Mm]onday|[Tt]uesday|[Ww]ednesday|[Tt]hursday|[Ff]riday"

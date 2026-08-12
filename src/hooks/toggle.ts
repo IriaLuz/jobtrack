@@ -1,6 +1,13 @@
 import { useState, useCallback, useRef } from "react";
 
-const Toggle = (v = false) => {
+type ToggleActions = {
+  toggle: () => void;
+  reset: () => void;
+  setOn: () => void;
+  setOff: () => void;
+};
+
+const useToggle = (v: boolean = false): [boolean, ToggleActions] => {
   const [value, setValue] = useState(v);
 
   const initialValue = useRef(v);
@@ -23,4 +30,4 @@ const Toggle = (v = false) => {
   return [value, { toggle, reset, setOn, setOff }];
 };
 
-export default Toggle;
+export default useToggle;

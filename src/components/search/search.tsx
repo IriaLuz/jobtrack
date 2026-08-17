@@ -29,6 +29,7 @@ const Search = () => {
     <div className="flex flex-col gap-6">
       <h3>Searchable/filterable list</h3>
       <input
+        value={query}
         className="border-[#2e303a] border rounded py-1.5 px-3 w-full"
         onChange={handleOnchange}
         placeholder="type to search"
@@ -36,8 +37,8 @@ const Search = () => {
 
       {filteredItems.length > 0 ? (
         <ul className="border-[#2e303a] border rounded flex flex-col items-start py-1.5 px-3 w-full">
-          {filteredItems.map((item, i) => (
-            <li key={i}>{item.message}</li>
+          {filteredItems.map((item) => (
+            <li key={item.message}>{item.message}</li>
           ))}
         </ul>
       ) : (

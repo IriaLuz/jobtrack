@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import useDebounce from "../../hooks/useDebounce";
 
-const SearchInput = ({ onSearch }) => {
+interface SearchInputProps {
+  onSearch: (query: string) => void;
+}
+
+const SearchInput = ({ onSearch }: SearchInputProps) => {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
 

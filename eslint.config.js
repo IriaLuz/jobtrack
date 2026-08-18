@@ -1,15 +1,17 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from '@typescript-eslint/eslint-plugin'
-import tsparser from '@typescript-eslint/parser'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from "@eslint/js";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "@typescript-eslint/eslint-plugin";
+import tsparser from "@typescript-eslint/parser";
+import { defineConfig, globalIgnores } from "eslint/config";
+import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  ...pluginQuery.configs["flat/recommended-strict"],
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{js,jsx}'],
+    files: ["**/*.{js,jsx}"],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -21,17 +23,18 @@ export default defineConfig([
     },
   },
   {
-    files: ['**/*.{ts,tsx}'],
-    plugins: { '@typescript-eslint': tseslint },
+    files: ["**/*.{ts,tsx}"],
+    extends: [reactHooks.configs.flat.recommended],
+    plugins: { "@typescript-eslint": tseslint },
     languageOptions: {
       parser: tsparser,
       globals: globals.browser,
-      parserOptions: { project: './tsconfig.json' },
+      parserOptions: { project: "./tsconfig.json" },
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'error',
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
     },
   },
-])
+]);

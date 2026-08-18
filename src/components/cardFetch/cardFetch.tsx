@@ -30,7 +30,7 @@ type RequestState =
   | { status: "error" }
 
 
-const CardFetch = ({ userId }: { userId: string }) => {
+const CardFetch = ({ userId }: { userId: number }) => {
 
   const [state, setState] = useState<RequestState>({ status: "loading" })
 

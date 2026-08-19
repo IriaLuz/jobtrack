@@ -24,7 +24,11 @@ export default defineConfig([
   },
   {
     files: ["**/*.{ts,tsx}"],
-    extends: [reactHooks.configs.flat.recommended],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
     plugins: { "@typescript-eslint": tseslint },
     languageOptions: {
       parser: tsparser,
@@ -35,6 +39,8 @@ export default defineConfig([
       ...tseslint.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unsafe-assignment": "error",
+      "no-unused-vars": "off",
+      "no-undef": "off",
     },
   },
 ]);

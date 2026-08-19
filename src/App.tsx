@@ -6,6 +6,7 @@ import Search from "./components/search/search";
 import PokemonName from "./components/pokemon/pokemonName";
 import SearchInput from "./components/searchInput/searchInput";
 import CardFetch from "./components/cardFetch/cardFetch";
+import CountryList from "./components/countriesFetch/countriesFetch";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -38,6 +39,9 @@ function App() {
           <PokemonName />
           <SearchInput onSearch={(q) => console.log("onSearch:", q)} />
         </div>
+      </section>
+      <section>
+        <CountryList />
       </section>
       <section className="flex flex-col py-6 px-5" id="spacer">
         <div className="flex flex-row gap-6">

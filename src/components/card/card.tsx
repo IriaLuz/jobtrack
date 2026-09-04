@@ -4,7 +4,7 @@ import { JobApplication } from '../../types/job'
 export const Card = ({ job }: { job: JobApplication }) => {
     const { company, role, salary, link } = job
     return (
-        <div className="flex flex-col items-start gap-2  border-[#2e303a] border rounded-2xl  p-4">
+        <div className="flex flex-col items-start gap-2  border-[#2e303a] border rounded-2xl bg-[var(--code-bg)] p-4">
             <div>{company}</div>
             <div>{role}</div>
             <div>{salary}</div>

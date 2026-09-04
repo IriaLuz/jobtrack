@@ -5,7 +5,7 @@ import { Card } from '../card/card'
 const Column = ({ status, jobs }: { status: string, jobs: JobApplication[] }) => {
 
     return (
-        <div className="flex-col items-start border rounded-2xl bg-gray-800 gap-2 p-4 w-[412px]  flex-none">
+        <div className="flex-none  border rounded-2xl bg-gray-800 gap-2 p-4 w-103">
             <h2>{status}</h2>
             {jobs.map(job => {
                 return (

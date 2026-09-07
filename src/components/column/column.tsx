@@ -1,7 +1,13 @@
 import { JobApplication, Status } from '../../types/job'
 import { Card } from '../card/card'
 
-export const Column = ({ status, jobs }: { status: Status, jobs: JobApplication[] }) => {
+interface ColumnProps {
+    status: Status
+    jobs: JobApplication[]
+}
+
+
+export const Column = ({ status, jobs }: ColumnProps) => {
 
     return (
         <div className="flex-none  border rounded-2xl bg-gray-800 gap-2 p-4 w-103">

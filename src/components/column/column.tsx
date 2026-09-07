@@ -1,8 +1,7 @@
-import React from 'react'
-import { JobApplication } from '../../types/job'
+import { JobApplication, Status } from '../../types/job'
 import { Card } from '../card/card'
 
-const Column = ({ status, jobs }: { status: string, jobs: JobApplication[] }) => {
+export const Column = ({ status, jobs }: { status: Status, jobs: JobApplication[] }) => {
 
     return (
         <div className="flex-none  border rounded-2xl bg-gray-800 gap-2 p-4 w-103">
@@ -16,4 +15,3 @@ const Column = ({ status, jobs }: { status: string, jobs: JobApplication[] }) =>
     )
 }
 
-export default Column

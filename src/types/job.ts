@@ -6,7 +6,7 @@ export const STATUSES = [
   "rejected",
 ] as const;
 
-type Status = (typeof STATUSES)[number];
+export type Status = (typeof STATUSES)[number];
 
 export type JobApplication = {
   id: string;

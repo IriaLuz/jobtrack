@@ -1,0 +1,80 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobStatus {
+  saved
+  applied
+  interviewing
+  offered
+  rejected
+}
+
+enum QuestionSource {
+  ai
+  question_bank
+}
+
+enum ExerciseStatus {
+  unanswered
+  graded
+  off_task
+  grading_unavailable
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  passwordHash    String
+  createdAt       DateTime         @default(now())
+  jobApplications JobApplication[]
+}
+
+model JobApplication {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   String
+  role      String
+  status    JobStatus  @default(saved)
+  link      String
+  salary    String?
+  location  String?
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  exercises Exercise[]
+
+  @@index([userId, updatedAt])
+}
+
+model Exercise {
+  id               String         @id @default(uuid())
+  jobApplicationId String
+  jobApplication   JobApplication @relation(fields: [jobApplicationId], references: [id], onDelete: Cascade)
+  question         String
+  questionSource   QuestionSource
+  status           ExerciseStatus @default(unanswered)
+  answer           String?
+  score            Int?
+  feedback         String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([jobApplicationId, createdAt])
+}
+
+/// Rate-limit counters (fixed windows). One row per key: it restarts at 1 when a new window begins,
+/// so the table never grows beyond the number of keys in use.
+model RateLimit {
+  key             String   @id
+  windowStartedAt DateTime
+  hits            Int
+}

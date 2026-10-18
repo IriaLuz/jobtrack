@@ -28,6 +28,8 @@ export const mockJobs: JobApplication[] = [
     role: "Product Engineer",
     status: "interviewing",
     link: "https://example.com/jobs/product-engineer",
+    salary: null,
+    location: null,
     notes:
       "First interview completed. Follow-up discussion will cover system design, testing strategy, accessibility, and collaboration with product and design teams.",
   },
@@ -39,5 +41,6 @@ export const mockJobs: JobApplication[] = [
     link: "https://example.com/jobs/software-engineer",
     salary: "£60,000–£70,000",
     location: "Bristol, UK",
+    notes: null,
   },
 ];

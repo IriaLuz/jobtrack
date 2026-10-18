@@ -1,0 +1,44 @@
+{
+  "name": "jobtrack-server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "start": "tsx --env-file-if-exists=.env src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "@sentry/node": "^11.8.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.19.2",
+    "@types/supertest": "^7.2.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "prisma": "^7.10.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

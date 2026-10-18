@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# On pull requests a newer push cancels the older run. On main runs queue instead: cancelling a
+# run in the middle of `prisma migrate deploy` would leave a failed migration to repair by hand.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+# Every job runs inside a container, so CI always uses the same Node, PostgreSQL and browser
+# versions, whatever the runner image has installed.
+
+jobs:
+  web:
+    name: Web · lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    container: node:24
+    steps:
+      - uses: actions/checkout@v7
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  api:
+    name: API · lint, typecheck, unit and integration tests
+    runs-on: ubuntu-latest
+    container: node:24
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: jobtrack
+          POSTGRES_PASSWORD: jobtrack
+          POSTGRES_DB: jobtrack_test
+        options: >-
+          --health-cmd "pg_isready -U jobtrack"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Inside a job container, a service container is reachable by its name ("postgres").
+      DATABASE_URL: postgresql://jobtrack:jobtrack@postgres:5432/jobtrack_test
+      JWT_SECRET: ci-only-secret-that-is-not-used-anywhere-else
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:integration
+
+  e2e:
+    name: End-to-end · Playwright
+    needs: [web, api]
+    runs-on: ubuntu-latest
+    container:
+      # Playwright's official image has the browsers preinstalled. Its tag must match @playwright/test.
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: jobtrack
+          POSTGRES_PASSWORD: jobtrack
+          POSTGRES_DB: jobtrack_e2e
+        options: >-
+          --health-cmd "pg_isready -U jobtrack"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://jobtrack:jobtrack@postgres:5432/jobtrack_e2e
+      JWT_SECRET: ci-only-secret-that-is-not-used-anywhere-else
+    steps:
+      - uses: actions/checkout@v7
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npx prisma migrate deploy
+        working-directory: server
+      - run: npx playwright test
+      - name: Keep the report when a test fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+
+  # Deploys only from main, and only after every test above has passed.
+  # Setup (once): see "Deploying" in README.md for the Vercel projects and GitHub secrets.
+  deploy-api:
+    name: Deploy · API
+    needs: [e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    container: node:24
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      # Migrate first: the new code may need the new schema. Migrations must stay backwards
+      # compatible, because the old code keeps serving until the deploy below finishes.
+      - name: Migrate the production database
+        working-directory: server
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          npm ci
+          npx prisma migrate deploy
+      - run: npx --yes vercel@64.5.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@64.5.0 build --prod --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@64.5.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+  deploy-web:
+    name: Deploy · Web
+    needs: [deploy-api]
+    runs-on: ubuntu-latest
+    container: node:24
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEB_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      # The placeholder host uses the reserved .invalid domain, so it can never send requests to a
+      # site someone else owns. This check stops a forgotten setup from shipping a broken app.
+      - name: Check the API URL in vercel.json has been set
+        run: |
+          if grep -q '\.invalid/' vercel.json; then
+            echo "::error file=vercel.json::Replace your-api-project.invalid with the API's Vercel URL (see README, Deploying)."
+            exit 1
+          fi
+      - run: npx --yes vercel@64.5.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@64.5.0 build --prod --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@64.5.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"

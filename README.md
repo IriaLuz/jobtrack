@@ -30,32 +30,144 @@ docs/      plan and decisions    server/src/infrastructure   Prisma, JWT, bcrypt
 
 ## Run it locally
 
-You need Node 24 (`nvm use` reads `.nvmrc`) and Docker. The database listens on port **5433**,
-so it never clashes with another PostgreSQL you may already run on 5432.
+Follow these steps in order. Every command is meant to be copied as it is.
+
+### What you need
+
+| Tool | Version | Check with |
+|---|---|---|
+| Git | any | `git --version` |
+| Node.js | 24 (npm comes with it) | `node -v` |
+| Docker Desktop | any recent version, **running** | `docker info` |
+
+The easiest way to get Node 24 is [nvm](https://github.com/nvm-sh/nvm): the repository's `.nvmrc`
+tells it which version to use.
+
+The app uses three ports on your machine: **5433** (database), **3000** (API) and **5173** (web
+app; if it is taken, Vite picks the next free one and prints it).
+
+### 1. Get the code
+
+```bash
+git clone https://github.com/IriaLuz/jobtrack.git
+```
+
+```bash
+cd jobtrack
+```
+
+### 2. Use Node 24
+
+```bash
+nvm install
+```
+
+`node -v` should now print `v24.x.x`. Run `nvm use` in every new terminal you open for this project.
+
+### 3. Start the database
+
+```bash
+docker compose up -d db
+```
+
+`docker compose ps` should show the `db` service as `healthy` after a few seconds. The first time,
+this also creates a second, empty database (`jobtrack_test`) that the integration tests use.
+
+### 4. Set up and start the API (terminal 1)
+
+```bash
+cd server
+```
+
+```bash
+npm install
+```
+
+```bash
+cp .env.example .env
+```
+
+Open `server/.env` and replace the `JWT_SECRET` value with a long random string (the secret that
+signs login tokens). This command prints one you can paste:
+
+```bash
+openssl rand -base64 48
+```
+
+Optional: put an Anthropic API key in `ANTHROPIC_API_KEY` to switch on AI questions and grading.
+Without it everything still works, and practice questions come from the built-in question bank.
+
+Create the tables:
+
+```bash
+npx prisma migrate deploy
+```
+
+Start the API:
+
+```bash
+npm run dev
+```
+
+You should see `jobtrack API listening on http://localhost:3000`. Leave this terminal running.
+To check it from another terminal:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+It answers `{"status":"ok"}`.
+
+### 5. Start the web app (terminal 2)
+
+Open a second terminal in the `jobtrack` folder (not `server`):
 
 ```bash
 nvm use
 ```
 
 ```bash
-docker compose up -d db
+npm install
 ```
-
-Then the API, in one terminal:
 
 ```bash
-cd server && cp .env.example .env && npm install && npx prisma migrate dev && npm run dev
+npm run dev
 ```
 
-And the web app, in another:
+Open the address Vite prints, usually http://localhost:5173. Vite forwards every `/api` request to
+the API on port 3000, so there is nothing else to configure.
+
+### 6. Try it
+
+1. Choose **Create an account** and sign up with any email and a password of 8 or more characters.
+2. Choose **Add application**, fill in company, role and a link starting with `https://`.
+3. Drag the card to another column, or change its status with **Edit**.
+4. Choose **Practise**, then **New question**, write an answer and submit it.
+
+### Stop it
+
+Press `Ctrl+C` in both terminals, then stop the database (your data is kept for next time):
 
 ```bash
-npm install && npm run dev
+docker compose stop db
 ```
 
-Open http://localhost:5173. Vite forwards `/api` to the API on port 3000.
-Add `ANTHROPIC_API_KEY` to `server/.env` to switch on AI questions and grading; without it the app
-uses the fallback question bank.
+To delete all local data and start from scratch:
+
+```bash
+docker compose down -v
+```
+
+### If something goes wrong
+
+| You see | Why | Fix |
+|---|---|---|
+| `port is already allocated` when starting the database | another program uses port 5433 | change `"5433:5432"` in `docker-compose.yml` and the port in `server/.env` and `server/.env.test` |
+| `Invalid environment configuration` when starting the API | `server/.env` is missing, or `JWT_SECRET` is shorter than 32 characters | redo the `cp .env.example .env` step and set the secret |
+| `Can't reach database server` (migrations), or `ECONNREFUSED` in the API terminal and "Something went wrong" in the app | the database is not running | `docker compose up -d db` |
+| `EBADENGINE` warnings, or tests refusing to start | wrong Node version | `nvm use` |
+| "Something went wrong" right after deleting the local data | the browser still holds a login token for a user that no longer exists | choose **Sign out** and create the account again |
+| The web app opens on port 5174 | port 5173 was taken | nothing to fix: use the address Vite printed |
 
 ## Tests
 

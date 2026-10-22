@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// The contract for what the AI must return. The domain owns it: the Anthropic adapter uses these
+// The contract for what the AI must return. The domain owns it: the Groq adapter mirrors these
 // schemas to constrain generation, and the exercise service re-validates every response with them.
 
 export const aiQuestionSchema = z.object({

@@ -19,7 +19,7 @@ export default defineConfig({
       // The real API and database. AI is switched off on purpose: the journey must work without it.
       command: "npm run start --prefix server",
       url: `${API_URL}/api/health`,
-      env: { PORT: "3100", ANTHROPIC_API_KEY: "" },
+      env: { PORT: "3100", GROQ_API_KEY: "" },
     },
     {
       // The production build, served with the same /api proxy as in development.

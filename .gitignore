@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files (server/.env.example and server/.env.test are committed on purpose)
+.env
+
+# Test output
+playwright-report
+test-results
+
+# Vercel CLI
+.vercel

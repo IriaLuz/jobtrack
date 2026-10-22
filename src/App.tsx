@@ -1,14 +1,13 @@
 import "./App.css";
-import { Board } from "./components/board/board";
-import { mockJobs } from "./mocks/jobs";
-import { STATUSES } from "./types/job";
-function App() {
+import { useSession } from "./auth/sessionStore";
+import { AuthPage } from "./pages/auth-page/auth-page";
+import { BoardPage } from "./pages/board-page/board-page";
 
-  return (
-    <>
-      <Board statuses={STATUSES} jobs={mockJobs} />
-    </>
-  );
+// Two screens chosen by whether someone is signed in, so no router is needed yet.
+function App() {
+  const session = useSession();
+
+  return session ? <BoardPage session={session} /> : <AuthPage />;
 }
 
 export default App;

@@ -9,7 +9,8 @@ import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default defineConfig([
   ...pluginQuery.configs["flat/recommended-strict"],
-  globalIgnores(["dist"]),
+  // server/ is its own package with its own ESLint config.
+  globalIgnores(["dist", "server", "playwright-report", "test-results"]),
   {
     files: ["**/*.{js,jsx}"],
     extends: [
@@ -42,5 +43,10 @@ export default defineConfig([
       "no-unused-vars": "off",
       "no-undef": "off",
     },
+  },
+  {
+    // Tooling config runs in Node, not in the browser.
+    files: ["vite.config.js"],
+    languageOptions: { globals: globals.node },
   },
 ]);

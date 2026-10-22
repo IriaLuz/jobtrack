@@ -38,8 +38,8 @@ export function createApp(services: AppServices): Express {
     windowMs: 15 * MINUTE,
     message: "Too many sign-in attempts.",
   });
-  // Every request to these routes can call the paid AI. The overall spending cap is the
-  // Anthropic workspace limit; this stops one account from using it all.
+  // Every request to these routes can call the AI. The overall cap is the Groq plan's limits;
+  // this stops one account from using them all.
   const aiRateLimiter = createRateLimiter(services.hitCounter, {
     name: "ai",
     maxHits: 30,

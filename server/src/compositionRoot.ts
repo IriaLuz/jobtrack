@@ -9,8 +9,8 @@ import { createExerciseService, type Logger } from "./domain/exercises/exerciseS
 import { createJobService } from "./domain/jobs/jobService.js";
 import type { PrismaClient } from "./generated/prisma/client.js";
 import type { ReportError } from "./http/errorHandler.js";
-import { createAnthropicExerciseAi } from "./infrastructure/anthropicExerciseAi.js";
 import { createBcryptPasswordHasher } from "./infrastructure/bcryptPasswordHasher.js";
+import { createGroqExerciseAi } from "./infrastructure/groqExerciseAi.js";
 import { createJwtTokens } from "./infrastructure/jwtTokens.js";
 import { createPrismaClient } from "./infrastructure/prismaClient.js";
 import { createPrismaExerciseRepository } from "./infrastructure/prismaExerciseRepository.js";
@@ -64,8 +64,9 @@ export function buildApp(config: Config = loadConfig()): Express {
     prisma: createPrismaClient(config.DATABASE_URL),
     jwtSecret: config.JWT_SECRET,
     passwordHasher: createBcryptPasswordHasher(),
-    exerciseAi: config.ANTHROPIC_API_KEY
-      ? createAnthropicExerciseAi({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL })
+    // Without a key there is no AI: every request takes the fallback path (the question bank).
+    exerciseAi: config.GROQ_API_KEY
+      ? createGroqExerciseAi({ apiKey: config.GROQ_API_KEY, model: config.GROQ_MODEL })
       : null,
     logger: {
       warn(message, details) {

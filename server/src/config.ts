@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Optional settings: an empty value (e.g. `ANTHROPIC_API_KEY=` in .env) means "not set". */
+/** Optional settings: an empty value (e.g. `GROQ_API_KEY=` in .env) means "not set". */
 const optionalSetting = z
   .string()
   .trim()
@@ -12,8 +12,11 @@ const configSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.url("DATABASE_URL must be a PostgreSQL connection URL"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long"),
-  ANTHROPIC_API_KEY: optionalSetting,
-  ANTHROPIC_MODEL: z.string().trim().min(1).default("claude-opus-5-5"),
+  GROQ_API_KEY: optionalSetting,
+  // A production model on Groq: supports strict structured outputs, and is its fastest and cheapest.
+  // Any replacement must support strict structured outputs and `reasoning_effort` (the GPT-OSS
+  // models do), or every AI request would end in the fallback.
+  GROQ_MODEL: z.string().trim().min(1).default("openai/gpt-oss-20b"),
   SENTRY_DSN: optionalSetting.pipe(z.url().optional()),
 });
 

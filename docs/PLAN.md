@@ -369,13 +369,50 @@ api  (lint, typecheck, unit, integration) ─┴─▶ e2e ─▶ deploy-api (mi
 - Vercel CLI pinned (`vercel@64.5.0`) for reproducible deploys.
 - Runs on pull requests cancel each other; runs on `main` queue. Cancelling a run in the middle of
   `prisma migrate deploy` would leave a failed migration that blocks every later deploy until repaired by hand.
-- The root `vercel.json` ships with `your-api-project.invalid` (a reserved domain that can never
-  resolve, so it cannot send requests to a site someone else owns) and `deploy-web` refuses to run
-  until it is replaced.
+- The root `vercel.json` rewrites `/api/*` to the API project. It shipped with
+  `your-api-project.invalid` (a reserved domain that can never resolve, so it cannot send requests to
+  a site someone else owns), and `deploy-web` refuses to run while that placeholder is there.
+- Both `vercel.json` files set `"git": { "deploymentEnabled": false }`: Vercel never deploys on its
+  own, so nothing reaches production without passing the pipeline. It lives in code, so it cannot be
+  switched back on by accident in the dashboard.
+- `server/vercel.json` sets `"regions": ["lhr1"]`: the API functions run in London, next to the
+  database (see 9.1).
 - `server/vercel.json` sets `maxDuration: 30`: the platform must allow longer than our 15 s AI
   budget, or it would cut the request before the fallback runs.
 - Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_API_PROJECT_ID`, `VERCEL_WEB_PROJECT_ID`,
   `PRODUCTION_DATABASE_URL` (the direct, non-pooled URL; migrations need it).
+
+### 9.1 Production (live since 2026-10-22)
+
+| Piece | Where |
+|---|---|
+| Web app (the link to share) | https://jobtrack-web-delta.vercel.app, Vercel project `jobtrack-web` |
+| API | https://jobtrack-api-five.vercel.app, Vercel project `jobtrack-api` (Root Directory `server`, preset Other), functions in London (`lhr1`) |
+| Database | Neon Postgres `jobtrack-db`, Free plan, London (`aws-eu-west-2`), added from Vercel's Storage tab and connected to `jobtrack-api` (Production + Preview) with the prefix `DATABASE`, which creates `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct) |
+| Deploys | only GitHub Actions, on every merge to `main`, after all tests pass |
+
+Decisions taken during the setup:
+- **Everything in London.** The users are in the UK, and a database far from its functions adds a
+  round trip across the Atlantic to every query.
+- **Neon's own "Auth" switched off.** We already have our own (JWT + bcrypt); two user systems
+  would compete.
+- **Preset `Other` for the API, not `Express`.** `server/api/index.ts` and `server/vercel.json`
+  already tell Vercel how to run it; the Express preset could pick `src/index.ts`, which calls `listen()`.
+- **One Vercel token for both projects** (scope: all projects of the `jobtrack` team, 1-year expiry),
+  because the pipeline deploys both.
+- **Secrets never pass through a chat.** They go straight from Vercel or Neon into GitHub
+  (`openssl rand -base64 48 | pbcopy` for `JWT_SECRET`, so it is never even shown on screen).
+
+Verified live after the first pipeline deploy (PR #2):
+- All five jobs passed: web, API and end-to-end tests, then `deploy-api` (migrations applied to Neon,
+  API deployed), then `deploy-web`.
+- `/api/health` answers through the web domain, so the rewrite reaches the API.
+- Against the production database: sign up, create an application, move it, generate a practice
+  question (from the question bank, because there is no AI key yet) and delete it.
+- The page loads with no console errors, and the Content-Security-Policy and `nosniff` headers are served.
+
+Not live yet: `ANTHROPIC_API_KEY` (with a monthly spend limit in the Anthropic Console) and Sentry
+(`SENTRY_DSN` / `VITE_SENTRY_DSN`). Both are only environment variables plus a redeploy; no code changes.
 
 ---
 
@@ -481,9 +518,23 @@ instead of CSS selectors.
 Steps: Sentry in `main.tsx` and `compositionRoot.ts`; `.github/workflows/ci.yml`; root and
 `server/vercel.json`; `README.md`; then the one-time Vercel/GitHub setup in the README.
 
-Verify: open a pull request and watch the four check jobs pass; merge to `main` and watch the deploys.
+Verify: open a pull request and watch the three check jobs pass; merge to `main` and watch the deploys.
 
-Learn: why migrations run before the deploy, and why they must be backwards compatible.
+The one-time production setup, in the order that worked (details and decisions in 9.1):
+1. Vercel account (Hobby). Create `jobtrack-web` first (Root Directory `./`, preset Vite), because
+   `server/` only exists in the import once the code is on `main`.
+2. Merge the code to `main`. The deploy jobs fail at "Connection url is empty": expected, there
+   are no secrets yet.
+3. Create `jobtrack-api` (Root Directory `server`, preset Other). Its first run fails with
+   `FUNCTION_INVOCATION_FAILED`: expected, `loadConfig()` refuses to start without `DATABASE_URL`
+   and `JWT_SECRET`.
+4. Storage → Neon (London, Auth off, Free, prefix `DATABASE`), then add `JWT_SECRET` and Redeploy:
+   `/api/health` answers 200.
+5. Put the API's domain in the root `vercel.json`, add `regions` and `git.deploymentEnabled`
+   (a small PR), add the five GitHub secrets, then merge that PR: the first real deploy.
+
+Learn: why migrations run before the deploy, and why they must be backwards compatible; why a
+pooled URL for the app but a direct one for migrations.
 
 ### 10.10 Phase 10: hardening (the review's concerns)
 Steps, each a small commit:
@@ -554,12 +605,13 @@ no-code option?
 | Sign-out did not sync across tabs | one `storage` event listener in `sessionStore` | 6 lines |
 | Sentry flushing on serverless | **no code**: `@sentry/node` sees `process.env.VERCEL` and keeps the function alive to flush (`setupVercelKeepAlive`) | checked in the SDK source instead of adding a dependency |
 | Built on Node 26 / PostgreSQL 14 | everything re-run on **Node 24.22** against **PostgreSQL 17.11** from `docker-compose.yml`, plus a clean `npm ci` of both packages | it also ran the compose file for the first time, which exposed a port clash with another local PostgreSQL: the database now uses host port 5433 |
-| Not verified live | "First deploy checklist" in the README | cannot be done without the Vercel, Anthropic and Sentry accounts |
+| Not verified live | "First deploy checklist" in the README, then run against production on 2026-10-22 (see 9.1) | the deploy itself is the only real test of the deploy |
 
 **Concerns that remain (accepted, with the reason)**
 
-1. **Not verified live** (see the README checklist): the Vercel deploys, the GitHub workflow,
-   a real Anthropic call and Sentry.
+1. **A real Anthropic call and Sentry are not verified yet.** The deploys, the pipeline, the
+   migrations, the security headers and the whole journey are verified in production (9.1); the AI
+   and error reporting are waiting for their keys.
 2. **JWT in `localStorage`, valid 7 days, no revocation.** Now mitigated by the CSP. Upgrade
    path: short-lived token + httpOnly refresh cookie (possible, since everything is same-origin).
 3. **Sign-up is not rate-limited.** The only sensible key is the IP, which we cannot trust behind

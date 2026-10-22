@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": { "deploymentEnabled": false },
   "headers": [
     {
       "source": "/(.*)",
@@ -15,7 +16,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-api-project.invalid/api/:path*"
+      "destination": "https://jobtrack-api-five.vercel.app/api/:path*"
     }
   ]
 }

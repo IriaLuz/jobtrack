@@ -54,6 +54,31 @@ describe("JobForm", () => {
     });
   });
 
+  it("does not submit until the required fields are filled in", async () => {
+    const { onSubmit, user } = renderForm();
+
+    await user.click(screen.getByRole("button", { name: "Add application" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("starts from the existing values when editing, including notes saved before the rename", () => {
+    renderForm({ initialValues: existingJob, submitLabel: "Save changes" });
+
+    expect(screen.getByLabelText("Company")).toHaveValue("Acme");
+    expect(screen.getByLabelText("Status")).toHaveValue("interviewing");
+    expect(screen.getByLabelText("Job Description (optional)")).toHaveValue("Second round on Friday");
+  });
+
+  it("shows the server's error and a busy state while saving", () => {
+    renderForm({ isSubmitting: true, errorMessage: "Link must be a valid http(s) URL" });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Link must be a valid http(s) URL");
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  });
+});
+
+describe("JobForm job description", () => {
   // Regression: the browser's maxLength={2000} silently cut pasted descriptions, so the AI never saw the rest.
   it("submits a pasted job description in full, without cutting it", async () => {
     const { onSubmit, user } = renderForm();
@@ -185,28 +210,5 @@ describe("JobForm", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent("at most 12,000 characters");
-  });
-
-  it("does not submit until the required fields are filled in", async () => {
-    const { onSubmit, user } = renderForm();
-
-    await user.click(screen.getByRole("button", { name: "Add application" }));
-
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it("starts from the existing values when editing, including notes saved before the rename", () => {
-    renderForm({ initialValues: existingJob, submitLabel: "Save changes" });
-
-    expect(screen.getByLabelText("Company")).toHaveValue("Acme");
-    expect(screen.getByLabelText("Status")).toHaveValue("interviewing");
-    expect(screen.getByLabelText("Job Description (optional)")).toHaveValue("Second round on Friday");
-  });
-
-  it("shows the server's error and a busy state while saving", () => {
-    renderForm({ isSubmitting: true, errorMessage: "Link must be a valid http(s) URL" });
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Link must be a valid http(s) URL");
-    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
   });
 });

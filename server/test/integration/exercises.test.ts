@@ -53,28 +53,28 @@ describe("with a working AI", () => {
   });
 
   it("gives the question writer the saved 12,000-character job description in full", async () => {
-    const contexts: QuestionContext[] = [];
+    const questionContexts: QuestionContext[] = [];
     const recordingApp = createTestApp({
       exerciseAi: {
         ...workingAi,
         writeQuestion: (context, signal) => {
-          contexts.push(context);
+          questionContexts.push(context);
           return workingAi.writeQuestion(context, signal);
         },
       },
     });
-    const user = await signUp(recordingApp);
+    const { authorization } = await signUp(recordingApp);
     const notes = "d".repeat(12_000);
     const job = await request(recordingApp)
       .post("/api/jobs")
-      .set("Authorization", user.authorization)
+      .set("Authorization", authorization)
       .send({ ...validJob, notes })
       .expect(201);
 
-    const exercise = await generateExercise(recordingApp, user.authorization, job.body.id as string);
+    const exercise = await generateExercise(recordingApp, authorization, job.body.id as string);
 
     expect(exercise.questionSource).toBe("ai");
-    expect(contexts).toEqual([{ company: validJob.company, role: validJob.role, notes }]);
+    expect(questionContexts).toEqual([{ company: validJob.company, role: validJob.role, notes }]);
   });
 
   it("rejects an empty answer", async () => {

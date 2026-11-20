@@ -118,8 +118,8 @@ describe("createGroqExerciseAi", () => {
     );
 
     const messages = requests[0]?.messages as { role: string; content: string }[];
-    expect(description).toHaveLength(12_000);
-    expect(messages[1]?.content).toContain(`Job description: ${description}\n</job>`);
+    const userMessage = messages.find((message) => message.role === "user");
+    expect(userMessage?.content).toContain(`Job description: ${description}\n</job>`);
   });
 
   it("fails at once on a rate limit instead of waiting for Groq's retry-after", async () => {

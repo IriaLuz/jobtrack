@@ -99,6 +99,70 @@ describe("job applications", () => {
   });
 });
 
+describe("job descriptions", () => {
+  it("saves and returns a 12,000-character job description in full, on create and on edit", async () => {
+    const { authorization } = await signUp(app);
+    const descriptionOnCreate = "c".repeat(12_000);
+    const descriptionOnEdit = "e".repeat(12_000);
+
+    const job = await createJob(authorization, { ...validJob, notes: descriptionOnCreate });
+    const afterCreate = await request(app).get("/api/jobs").set("Authorization", authorization).expect(200);
+    await request(app)
+      .patch(`/api/jobs/${job.id}`)
+      .set("Authorization", authorization)
+      .send({ notes: descriptionOnEdit })
+      .expect(200);
+    const afterEdit = await request(app).get("/api/jobs").set("Authorization", authorization).expect(200);
+
+    expect(afterCreate.body[0].notes).toBe(descriptionOnCreate);
+    expect(afterEdit.body[0].notes).toBe(descriptionOnEdit);
+  });
+
+  it("rejects a 12,001-character job description and keeps the saved one", async () => {
+    const { authorization } = await signUp(app);
+    const job = await createJob(authorization, { ...validJob, notes: "Original description" });
+    const tooLongDescription = "d".repeat(12_001);
+    const limitMessage = "Job description must be at most 12000 characters";
+    const limitError = { message: limitMessage, fieldErrors: { notes: [limitMessage] } };
+
+    const createResponse = await request(app)
+      .post("/api/jobs")
+      .set("Authorization", authorization)
+      .send({ ...validJob, notes: tooLongDescription });
+    const editResponse = await request(app)
+      .patch(`/api/jobs/${job.id}`)
+      .set("Authorization", authorization)
+      .send({ notes: tooLongDescription });
+    const list = await request(app).get("/api/jobs").set("Authorization", authorization).expect(200);
+
+    expect(createResponse.status).toBe(400);
+    expect(createResponse.body.error).toEqual(limitError);
+    expect(editResponse.status).toBe(400);
+    expect(editResponse.body.error).toEqual(limitError);
+    expect(list.body).toHaveLength(1);
+    expect(list.body[0].notes).toBe("Original description");
+  });
+
+  it("keeps notes saved before the rename readable and editable", async () => {
+    const { email, authorization } = await signUp(app);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    // Written straight to the database, as rows saved by the previous version of the app are.
+    const existing = await prisma.jobApplication.create({
+      data: { ...validJob, userId: user.id, notes: "Referral from Sam" },
+    });
+
+    const list = await request(app).get("/api/jobs").set("Authorization", authorization).expect(200);
+    const edited = await request(app)
+      .patch(`/api/jobs/${existing.id}`)
+      .set("Authorization", authorization)
+      .send({ status: "applied" })
+      .expect(200);
+
+    expect(list.body[0].notes).toBe("Referral from Sam");
+    expect(edited.body).toMatchObject({ status: "applied", notes: "Referral from Sam" });
+  });
+});
+
 describe("privacy between users", () => {
   it("never shows, changes or deletes another user's application", async () => {
     const alice = await signUp(app);

@@ -34,10 +34,10 @@ commit and ends green. Paste this to the guiding agent at the start of each sess
 | Node.js, Express, PostgreSQL, Prisma REST API | `server/`: Express 5, Prisma 7 + `@prisma/adapter-pg`, PostgreSQL 17 |
 | Zod boundary validation | requests (`http/schemas.ts`), environment (`config.ts`), LLM output (`domain/exercises/aiOutput.ts`) |
 | Per-user JWT auth | `authService` + `jwtTokens` + `requireAuth`; every query is scoped by `userId` |
-| Domain logic decoupled from Express, unit-testable without an HTTP server | `server/src/domain/**` imports neither Express nor Prisma; 58 unit tests run with no DB or network |
+| Domain logic decoupled from Express, unit-testable without an HTTP server | `server/src/domain/**` imports neither Express nor Prisma; 64 unit tests run with no DB or network |
 | Kanban UI in React 19, strict TS, Tailwind, TanStack Query | `src/pages/board-page`, `src/components/*`, `src/hooks/useJobs.ts` |
 | Union types that prevent invalid states at compile time | `OpenDialog`, `Exercise` (status union), `Record<Status, string>`, `AuthMode`, `ButtonVariant` |
-| Vitest, Supertest, RTL, Playwright E2E, Sentry | 58 + 30 server tests, 29 web tests, 3 E2E tests, `@sentry/react` + `@sentry/node` |
+| Vitest, Supertest, RTL, Playwright E2E, Sentry | 64 + 34 server tests, 39 web tests, 3 E2E tests, `@sentry/react` + `@sentry/node` |
 | Dockerised GitHub Actions deploying to Vercel | `.github/workflows/ci.yml`: every job runs in a container; deploy jobs ship to two Vercel projects |
 
 ---
@@ -384,9 +384,9 @@ dialogs are native modals, focus is always visible.
 
 | Layer | Tool | Count | What it proves | Command |
 |---|---|---|---|---|
-| Domain + adapters (unit) | Vitest | 58 | ownership rules, auth rules, every AI failure mode, answer saved before grading, request validation, rate-limit windows, LLM reply parsing, the exact request sent to Groq | `cd server && npm test` |
-| HTTP integration | Vitest + Supertest + PostgreSQL | 30 | auth flow, per-user isolation, error mapping (400/401/404/409/413/429), both rate limits, cascade deletes, AI fallbacks through the real stack | `cd server && npm run test:integration` |
-| Web | Vitest + RTL + jsdom | 29 | dumb components render and call the right callbacks (drag-and-drop included); the HTTP client signs out on 401; optimistic moves roll back on failure; sign-out syncs across tabs | `npm test` |
+| Domain + adapters (unit) | Vitest | 64 | ownership rules, auth rules, every AI failure mode, answer saved before grading, request validation, rate-limit windows, LLM reply parsing, the exact request sent to Groq | `cd server && npm test` |
+| HTTP integration | Vitest + Supertest + PostgreSQL | 34 | auth flow, per-user isolation, error mapping (400/401/404/409/413/429), both rate limits, cascade deletes, AI fallbacks through the real stack | `cd server && npm run test:integration` |
+| Web | Vitest + RTL + jsdom | 39 | dumb components render and call the right callbacks (drag-and-drop included); the HTTP client signs out on 401; optimistic moves roll back on failure; sign-out syncs across tabs | `npm test` |
 | End-to-end | Playwright | 3 | the real journey in Chromium under the production CSP (any violation fails the test): sign up, add, edit, drag (survives reload), practise without AI, delete, user isolation | `npm run test:e2e` |
 
 - The integration setup refuses to run unless the database name ends in `_test`, so it can never wipe your dev data.
@@ -677,6 +677,85 @@ console.groq.com.
 Learn: why the provider swap is one adapter and some configuration; why the domain's Zod
 schemas, not the provider's structured outputs, are what we trust; and why a stubbed `fetch` under
 the real SDK is a better test of an adapter than mocking the SDK.
+
+### 10.12 Phase 12: full job descriptions for tailored questions (done)
+**Bug (from a tester):** questions did not match the job description. Cause: the "Notes"
+textarea had `maxLength={2000}`, and a browser silently cuts a paste to `maxLength`, with no
+message. The API and the AI only ever saw the first 2,000 characters. Nothing on the server
+truncated, summarised or rewrote the text (`escapeTags` only turns `<` `>` into entities).
+
+**Change:** the field is shown as "Job Description (optional)" and accepts up to **12,000
+characters**, checked on both sides without ever cutting text. The internal name stays `notes`
+(API, domain, `QuestionContext`, Prisma column), so **no migration** and no change to saved data:
+`notes` is PostgreSQL `TEXT`, which has no practical length limit. The 100kb JSON body limit fits
+12,000 characters even in 3-byte scripts. Grading, answer saving, the fallbacks, auth and the
+other routes are unchanged.
+
+Steps (test first):
+1. Branch from `main`, Node 24 (`nvm use`).
+2. **Red:** in `job-form.test.tsx`, paste 12,000 characters into the field with `user.paste` and
+   expect all of them in `onSubmit`. It fails with "expected … to have a length of 12000 but got
+   2000": user-event applies `maxLength` like a browser does.
+3. **Green, web** (`src/components/job-form/job-form.tsx`): label "Job Description (optional)",
+   placeholder "Paste the full job description here to get interview questions tailored to this
+   role.", `rows={8}`, **no `maxLength`**. The textarea stays uncontrolled; an `onChange` only
+   tracks its length in state, counted like Zod 4's `.max()`: after trimming, in Unicode code
+   points (`[...text.trim()].length`, so an emoji is 1, not 2 as `.length` would say). Over
+   12,000: an error appears at once, `aria-invalid` is set, the hint "Up to 12,000 characters."
+   and the error are linked with `aria-describedby`, and submitting is blocked (focus moves to
+   the field). Every character stays in the field. The error (`role="alert"`) has fixed text,
+   "Job description must be at most 12,000 characters.", because a screen reader re-announces an
+   alert whenever its text changes; the live count ("Your description has 12,001 characters.")
+   is a plain paragraph next to it, visible but never announced. `practice-panel.tsx` copy:
+   "company, role and job description".
+4. **Green, API:** `notes: optionalText("Job description", 12_000)` in `server/src/http/schemas.ts`
+   (the same counting rule as the form; 400 "Job description must be at most 12000
+   characters"). The server check stays as the safeguard for any client.
+5. `groqExerciseAi.ts`: the question prompt labels the text `Job description:` instead of `Notes:`.
+   The grading prompt is untouched.
+6. Tests: the form (label, placeholder, rows, no `maxlength`, hint, 12,000 accepted, trimmed
+   length, 12,001 flagged before Save with every character kept and submit blocked, the alert
+   stays the same element with the same text while typing and the count sits outside it,
+   newlines and emoji at the boundary, back under the limit saves, an over-limit saved value is
+   flagged when editing); `schemas.test.ts` (12,000 accepted unchanged, 12,001 rejected with the
+   message, trim, newlines and emoji at the boundary, same rule on update);
+   `jobs.test.ts` (12,000 round-trips on create and edit, 12,001 → 400 on create and edit and
+   the saved value is kept, a row written straight to the DB stays readable and editable);
+   `exercises.test.ts` (the question writer receives the saved 12,000 characters in full);
+   `groqExerciseAi.test.ts` (the request contains the full 12,000 characters after
+   `Job description:`).
+
+**Why 12,000, and the token budget.** The binding limit is not the model's context window
+(131,072 tokens for `openai/gpt-oss-20b`) but the free plan's **8,000 tokens a minute shared by
+the whole app** (section 5). Estimates for one question request with a description at the limit:
+
+| Part | Tokens |
+|---|---|
+| System prompt (388 characters, measured) | ~85 |
+| Chat formatting, Groq's injected instructions, the strict JSON Schema | ~100-200 (estimate) |
+| `<job>` wrapper, company and role | ~25 (up to ~115 at their 200-character limits) |
+| 12,000 characters of English | ~2,700-3,400 (estimate, ~3.5-4.5 characters a token) |
+| Reasoning at `reasoning_effort: "low"` + the question | ~100-400 used (estimate); capped at 2,000 |
+| **Total** | **~3,100-4,100**; ~5,000-5,700 if Groq counts the whole `max_completion_tokens` (not documented) |
+
+So one request at the limit fits, and about two fit in a minute across all users (one if the cap
+is counted), shared with gradings (~1,500-2,000 each). Typical descriptions (3,000-6,000
+characters) cost far less. Over the budget, Groq answers 429, the SDK fails at once
+(`maxRetries: 0`), and the service falls back to the question bank, which the UI labels: no
+silent loss, and no hidden truncation. Known limitation: 12,000 characters of Chinese or Japanese
+can be 8,000+ tokens on its own, so such a job would always get question-bank questions; the
+Developer plan (250,000 tokens a minute) removes this. Not built (YAGNI): a token estimator, and
+fetching the description from the job URL.
+
+Verify (all on Node 24 with the compose database): in `server/`, `npm run lint`,
+`npm run typecheck`, `npm test` (64) and `npm run test:integration` (34); in the root,
+`npm run lint`, `npm test` (39), `npm run build` and `npm run test:e2e` (3). In the browser:
+paste a long description (it is kept whole), go one character over (the error shows at once and
+Save does nothing), delete it (the error goes and Save works), and reopen an old application (its
+notes show under the new label).
+
+Learn: why `maxLength` is the wrong tool for pasted text; why the same rule lives in the form
+(feedback) and in Zod (the guarantee); and why a renamed label does not need a renamed column.
 
 ---
 

@@ -73,7 +73,7 @@ export function createGroqExerciseAi({ apiKey, model }: GroqExerciseAiOptions): 
     writeQuestion: ({ company, role, notes }, signal) =>
       requestJson(
         WRITE_QUESTION_INSTRUCTIONS,
-        `<job>\nCompany: ${escapeTags(company)}\nRole: ${escapeTags(role)}\nNotes: ${escapeTags(notes ?? "none")}\n</job>`,
+        `<job>\nCompany: ${escapeTags(company)}\nRole: ${escapeTags(role)}\nJob description: ${escapeTags(notes ?? "none")}\n</job>`,
         "question",
         QUESTION_JSON_SCHEMA,
         signal,

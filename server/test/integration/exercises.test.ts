@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import request from "supertest";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import type { ExerciseAi } from "../../src/domain/exercises/exercise.js";
+import type { ExerciseAi, QuestionContext } from "../../src/domain/exercises/exercise.js";
 import { createTestApp, prisma, resetDatabase, signUp, validJob } from "./testApp.js";
 
 const AI_QUESTION = "How would you keep a large React codebase fast as it grows?";
@@ -50,6 +50,31 @@ describe("with a working AI", () => {
     expect(exercise).toMatchObject({ question: AI_QUESTION, questionSource: "ai", status: "unanswered" });
     expect(graded.body).toMatchObject({ status: "graded", score: 85, feedback: "Specific and well structured." });
     expect(history.body).toEqual([graded.body]);
+  });
+
+  it("gives the question writer the saved 12,000-character job description in full", async () => {
+    const contexts: QuestionContext[] = [];
+    const recordingApp = createTestApp({
+      exerciseAi: {
+        ...workingAi,
+        writeQuestion: (context, signal) => {
+          contexts.push(context);
+          return workingAi.writeQuestion(context, signal);
+        },
+      },
+    });
+    const user = await signUp(recordingApp);
+    const notes = "d".repeat(12_000);
+    const job = await request(recordingApp)
+      .post("/api/jobs")
+      .set("Authorization", user.authorization)
+      .send({ ...validJob, notes })
+      .expect(201);
+
+    const exercise = await generateExercise(recordingApp, user.authorization, job.body.id as string);
+
+    expect(exercise.questionSource).toBe("ai");
+    expect(contexts).toEqual([{ company: validJob.company, role: validJob.role, notes }]);
   });
 
   it("rejects an empty answer", async () => {

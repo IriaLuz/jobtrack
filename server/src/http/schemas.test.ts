@@ -20,6 +20,36 @@ describe("createJobSchema", () => {
     });
   });
 
+  it("accepts a job description of exactly 12,000 characters, unchanged", () => {
+    const notes = "d".repeat(12_000);
+
+    expect(createJobSchema.parse({ ...validJob, notes }).notes).toBe(notes);
+  });
+
+  it("rejects a job description of 12,001 characters with a clear message", () => {
+    const result = createJobSchema.safeParse({ ...validJob, notes: "d".repeat(12_001) });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("Job description must be at most 12000 characters");
+  });
+
+  // Zod 4 counts Unicode code points, and the web form counts the same way.
+  it("counts a newline and an emoji as one character each, the same rule as the web form", () => {
+    const parse = (notes: string) => createJobSchema.safeParse({ ...validJob, notes }).success;
+    const emoji = "😀".repeat(12_000); // 12,000 code points, 24,000 UTF-16 units
+
+    expect(parse(`${"d".repeat(5_999)}\n\n${"d".repeat(5_999)}`)).toBe(true); // 12,000
+    expect(parse(`${"d".repeat(5_999)}\n\n\n${"d".repeat(5_999)}`)).toBe(false); // 12,001
+    expect(parse(emoji)).toBe(true);
+    expect(parse(`${emoji}d`)).toBe(false);
+  });
+
+  it("checks the job description's length after trimming", () => {
+    const notes = "d".repeat(12_000);
+
+    expect(createJobSchema.parse({ ...validJob, notes: `  ${notes}\n` }).notes).toBe(notes);
+  });
+
   it("drops fields the client is not allowed to set", () => {
     const parsed = createJobSchema.parse({ ...validJob, id: "chosen-id", userId: "someone-else" });
 
@@ -43,6 +73,11 @@ describe("updateJobSchema", () => {
 
   it("still validates the fields that were sent", () => {
     expect(updateJobSchema.safeParse({ company: "" }).success).toBe(false);
+  });
+
+  it("applies the same 12,000-character job description limit when editing", () => {
+    expect(updateJobSchema.safeParse({ notes: "d".repeat(12_000) }).success).toBe(true);
+    expect(updateJobSchema.safeParse({ notes: "d".repeat(12_001) }).success).toBe(false);
   });
 });
 

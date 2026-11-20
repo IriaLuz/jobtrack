@@ -14,7 +14,7 @@ export const PracticePanel = ({ job }: { job: JobApplication }) => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-sm text-sm">
           Answer in your own words and get feedback on each attempt. The AI sees this application's company,
-          role and notes, and your answers.
+          role and job description, and your answers.
         </p>
         <Button onClick={() => generateExercise.mutate()} disabled={generateExercise.isPending}>
           {generateExercise.isPending ? "Writing a question…" : "New question"}

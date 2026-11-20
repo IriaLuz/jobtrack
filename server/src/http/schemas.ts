@@ -56,7 +56,9 @@ const jobFields = {
     .pipe(z.url({ protocol: /^https?$/, error: "Link must be a valid http(s) URL" })),
   salary: optionalText("Salary", 100),
   location: optionalText("Location", 200),
-  notes: optionalText("Notes", 2000),
+  // Shown to users as "Job description". 12,000 characters keeps one question request within the
+  // Groq free plan's 8,000 tokens a minute (docs/PLAN.md). The web form checks the same limit.
+  notes: optionalText("Job description", 12_000),
 };
 
 export const createJobSchema = z.object({ ...jobFields, status: jobFields.status.default("saved") });
